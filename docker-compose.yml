@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # ─── Databases ────────────────────────────────────────────────
+  mysql-auth:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth_db
+    ports: ["3307:3306"]
+    volumes: [mysql_auth:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  mysql-vehicle:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vehicle_db
+    ports: ["3308:3306"]
+    volumes: [mysql_vehicle:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  mysql-traffic:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: traffic_db
+    ports: ["3309:3306"]
+    volumes: [mysql_traffic:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  mysql-incident:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: incident_db
+    ports: ["3310:3306"]
+    volumes: [mysql_incident:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  mysql-notification:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notification_db
+    ports: ["3311:3306"]
+    volumes: [mysql_notification:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  # ─── Services ─────────────────────────────────────────────────
+  auth-service:
+    build: ./services/auth-service
+    ports: ["3001:3001"]
+    environment:
+      DB_HOST: mysql-auth
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: auth_db
+      JWT_SECRET: super_secret_jwt_2024
+      JWT_EXPIRES_IN: 7d
+      PORT: 3001
+    depends_on:
+      mysql-auth:
+        condition: service_healthy
+
+  vehicle-service:
+    build: ./services/vehicle-service
+    ports: ["3002:3002"]
+    environment:
+      DB_HOST: mysql-vehicle
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: vehicle_db
+      JWT_SECRET: super_secret_jwt_2024
+      PORT: 3002
+    depends_on:
+      mysql-vehicle:
+        condition: service_healthy
+
+  traffic-service:
+    build: ./services/traffic-service
+    ports: ["3003:3003"]
+    environment:
+      DB_HOST: mysql-traffic
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: traffic_db
+      JWT_SECRET: super_secret_jwt_2024
+      PORT: 3003
+    depends_on:
+      mysql-traffic:
+        condition: service_healthy
+
+  incident-service:
+    build: ./services/incident-service
+    ports: ["3004:3004"]
+    environment:
+      DB_HOST: mysql-incident
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: incident_db
+      JWT_SECRET: super_secret_jwt_2024
+      PORT: 3004
+    depends_on:
+      mysql-incident:
+        condition: service_healthy
+
+  notification-service:
+    build: ./services/notification-service
+    ports: ["3005:3005"]
+    environment:
+      DB_HOST: mysql-notification
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: notification_db
+      JWT_SECRET: super_secret_jwt_2024
+      PORT: 3005
+    depends_on:
+      mysql-notification:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    ports: ["4000:4000"]
+    environment:
+      AUTH_URL: http://auth-service:3001/graphql
+      VEHICLE_URL: http://vehicle-service:3002/graphql
+      TRAFFIC_URL: http://traffic-service:3003/graphql
+      INCIDENT_URL: http://incident-service:3004/graphql
+      NOTIFICATION_URL: http://notification-service:3005/graphql
+      PORT: 4000
+    depends_on:
+      - auth-service
+      - vehicle-service
+      - traffic-service
+      - incident-service
+      - notification-service
+
+volumes:
+  mysql_auth:
+  mysql_vehicle:
+  mysql_traffic:
+  mysql_incident:
+  mysql_notification:

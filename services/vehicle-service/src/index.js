@@ -10,19 +10,29 @@ function getUser(req) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
+  try { 
+    return jwt.verify(token, JWT_SECRET); 
+  } catch { 
+    return null; 
+  }
 }
 
 async function start() {
   const app = express();
+  
   const server = new ApolloServer({
     typeDefs,
     resolvers,
     context: ({ req }) => ({ user: getUser(req) }),
-    formatError: (err) => ({ message: err.message }),
+    formatError: (err) => {
+      console.error('GraphQL Error:', err);
+      return { message: err.message };
+    },
   });
+
   await server.start();
   server.applyMiddleware({ app, path: '/graphql' });
+  
   const port = process.env.PORT || 3002;
   app.listen(port, () => console.log(`Vehicle service → http://localhost:${port}/graphql`));
 }

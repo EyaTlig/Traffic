@@ -6,7 +6,6 @@ function fmt(row) {
   return {
     ...row,
     createdAt: row.createdAt?.toISOString?.() || row.createdAt,
-    updatedAt: row.updatedAt?.toISOString?.() || row.updatedAt,
     recordedAt: row.recordedAt?.toISOString?.() || row.recordedAt,
     latitude: parseFloat(row.latitude),
     longitude: parseFloat(row.longitude),
@@ -73,12 +72,42 @@ module.exports = {
     updateVehicle: async (_, { id, ...fields }, { user }) => {
       if (!user) throw new Error('Unauthorized');
       const pool = await getPool();
-      const updates = Object.entries(fields).filter(([, v]) => v !== undefined);
-      if (updates.length) {
-        const set = updates.map(([k]) => `${k} = ?`).join(', ');
-        const vals = updates.map(([, v]) => v);
-        await pool.execute(`UPDATE vehicles SET ${set} WHERE id = ?`, [...vals, id]);
+      
+      // Construire la requête dynamiquement
+      const updates = [];
+      const values = [];
+      
+      if (fields.licensePlate !== undefined) {
+        updates.push('licensePlate = ?');
+        values.push(fields.licensePlate);
       }
+      if (fields.brand !== undefined) {
+        updates.push('brand = ?');
+        values.push(fields.brand);
+      }
+      if (fields.model !== undefined) {
+        updates.push('model = ?');
+        values.push(fields.model);
+      }
+      if (fields.type !== undefined) {
+        updates.push('type = ?');
+        values.push(fields.type);
+      }
+      if (fields.status !== undefined) {
+        updates.push('status = ?');
+        values.push(fields.status);
+      }
+      if (fields.driverName !== undefined) {
+        updates.push('driverName = ?');
+        values.push(fields.driverName);
+      }
+      
+      if (updates.length) {
+        const query = `UPDATE vehicles SET ${updates.join(', ')} WHERE id = ?`;
+        values.push(id);
+        await pool.execute(query, values);
+      }
+      
       const [rows] = await pool.execute('SELECT * FROM vehicles WHERE id = ?', [id]);
       if (!rows[0]) throw new Error('Vehicle not found');
       return fmt(rows[0]);

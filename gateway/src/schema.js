@@ -1,16 +1,16 @@
 const { gql } = require('apollo-server-express');
 
 module.exports = gql`
-  # ─── Enums ───────────────────────────────────────────────────
-  enum UserRole       { ADMIN OPERATOR }
-  enum VehicleType    { CAR TRUCK BUS MOTORCYCLE EMERGENCY }
-  enum VehicleStatus  { ACTIVE INACTIVE MAINTENANCE }
+  # Enums
+  enum UserRole { ADMIN OPERATOR }
+  enum VehicleType { CAR TRUCK BUS MOTORCYCLE EMERGENCY }
+  enum VehicleStatus { ACTIVE INACTIVE MAINTENANCE }
   enum TrafficDensity { LOW MEDIUM HIGH }
-  enum IncidentType   { ACCIDENT ROADWORK ROAD_CLOSED TRAFFIC_JAM }
+  enum IncidentType { ACCIDENT ROADWORK ROAD_CLOSED TRAFFIC_JAM }
   enum IncidentStatus { REPORTED IN_PROGRESS RESOLVED }
-  enum NotifType      { INCIDENT CONGESTION SYSTEM ALERT }
+  enum NotificationType { INCIDENT CONGESTION SYSTEM ALERT }
 
-  # ─── Auth ────────────────────────────────────────────────────
+  # Auth
   type User {
     id: ID!
     email: String!
@@ -24,7 +24,7 @@ module.exports = gql`
     user: User!
   }
 
-  # ─── Vehicle ─────────────────────────────────────────────────
+  # Vehicle
   type GpsPosition {
     id: ID!
     vehicleId: String!
@@ -46,7 +46,7 @@ module.exports = gql`
     createdAt: String!
   }
 
-  # ─── Traffic ─────────────────────────────────────────────────
+  # Traffic
   type TrafficMeasurement {
     id: ID!
     zoneId: String!
@@ -65,10 +65,11 @@ module.exports = gql`
     currentDensity: TrafficDensity!
     isActive: Boolean!
     createdAt: String!
+    updatedAt: String
   }
   type DensityStats { low: Int! medium: Int! high: Int! }
 
-  # ─── Incident ────────────────────────────────────────────────
+  # Incident
   type Incident {
     id: ID!
     title: String!
@@ -81,14 +82,15 @@ module.exports = gql`
     reportedBy: String
     resolvedAt: String
     createdAt: String!
+    updatedAt: String
   }
 
-  # ─── Notification ────────────────────────────────────────────
+  # Notification
   type Notification {
     id: ID!
     title: String!
     message: String!
-    type: NotifType!
+    type: NotificationType!
     recipientId: String!
     isRead: Boolean!
     relatedEntityId: String
@@ -96,7 +98,7 @@ module.exports = gql`
     createdAt: String!
   }
 
-  # ─── Queries ─────────────────────────────────────────────────
+  # Queries
   type Query {
     # Auth
     me: User
@@ -126,7 +128,7 @@ module.exports = gql`
     unreadNotificationsCount(recipientId: String!): Int!
   }
 
-  # ─── Mutations ───────────────────────────────────────────────
+  # Mutations
   type Mutation {
     # Auth
     register(email: String!, username: String!, password: String!, role: UserRole): AuthResponse!
@@ -134,7 +136,7 @@ module.exports = gql`
 
     # Vehicles
     createVehicle(licensePlate: String!, brand: String!, model: String!, type: VehicleType, driverName: String): Vehicle!
-    updateVehicle(id: ID!, brand: String, model: String, type: VehicleType, status: VehicleStatus, driverName: String): Vehicle!
+    updateVehicle(id: ID!, licensePlate: String, brand: String, model: String, type: VehicleType, status: VehicleStatus, driverName: String): Vehicle!
     removeVehicle(id: ID!): Boolean!
     recordPosition(vehicleId: ID!, latitude: Float!, longitude: Float!, speed: Float, address: String): GpsPosition!
 
@@ -149,7 +151,7 @@ module.exports = gql`
     removeIncident(id: ID!): Boolean!
 
     # Notifications
-    sendNotification(title: String!, message: String!, type: NotifType, recipientId: String!, relatedEntityId: String): Notification!
+    sendNotification(title: String!, message: String!, type: NotificationType, recipientId: String!, relatedEntityId: String): Notification!
     markNotificationRead(id: ID!): Notification!
     markAllNotificationsRead(recipientId: String!): Int!
     deleteNotification(id: ID!): Boolean!

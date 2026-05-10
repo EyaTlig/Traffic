@@ -1,14 +1,17 @@
 version: '3.8'
 
 services:
-  # ─── Databases ────────────────────────────────────────────────
+  # Databases
   mysql-auth:
     image: mysql:8.0
+    container_name: mysql-auth
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: auth_db
-    ports: ["3307:3306"]
-    volumes: [mysql_auth:/var/lib/mysql]
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_auth:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -16,11 +19,14 @@ services:
 
   mysql-vehicle:
     image: mysql:8.0
+    container_name: mysql-vehicle
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: vehicle_db
-    ports: ["3308:3306"]
-    volumes: [mysql_vehicle:/var/lib/mysql]
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_vehicle:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -28,11 +34,14 @@ services:
 
   mysql-traffic:
     image: mysql:8.0
+    container_name: mysql-traffic
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: traffic_db
-    ports: ["3309:3306"]
-    volumes: [mysql_traffic:/var/lib/mysql]
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_traffic:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -40,11 +49,14 @@ services:
 
   mysql-incident:
     image: mysql:8.0
+    container_name: mysql-incident
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: incident_db
-    ports: ["3310:3306"]
-    volumes: [mysql_incident:/var/lib/mysql]
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql_incident:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -52,20 +64,25 @@ services:
 
   mysql-notification:
     image: mysql:8.0
+    container_name: mysql-notification
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: notification_db
-    ports: ["3311:3306"]
-    volumes: [mysql_notification:/var/lib/mysql]
+    ports:
+      - "3311:3306"
+    volumes:
+      - mysql_notification:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       retries: 5
 
-  # ─── Services ─────────────────────────────────────────────────
-  auth-service:
+  # Backend Services
+  auth_service:
     build: ./services/auth-service
-    ports: ["3001:3001"]
+    container_name: auth_service
+    ports:
+      - "3001:3001"
     environment:
       DB_HOST: mysql-auth
       DB_PORT: 3306
@@ -81,7 +98,9 @@ services:
 
   vehicle-service:
     build: ./services/vehicle-service
-    ports: ["3002:3002"]
+    container_name: vehicle-service
+    ports:
+      - "3002:3002"
     environment:
       DB_HOST: mysql-vehicle
       DB_PORT: 3306
@@ -96,7 +115,9 @@ services:
 
   traffic-service:
     build: ./services/traffic-service
-    ports: ["3003:3003"]
+    container_name: traffic-service
+    ports:
+      - "3003:3003"
     environment:
       DB_HOST: mysql-traffic
       DB_PORT: 3306
@@ -111,7 +132,9 @@ services:
 
   incident-service:
     build: ./services/incident-service
-    ports: ["3004:3004"]
+    container_name: incident-service
+    ports:
+      - "3004:3004"
     environment:
       DB_HOST: mysql-incident
       DB_PORT: 3306
@@ -126,7 +149,9 @@ services:
 
   notification-service:
     build: ./services/notification-service
-    ports: ["3005:3005"]
+    container_name: notification-service
+    ports:
+      - "3005:3005"
     environment:
       DB_HOST: mysql-notification
       DB_PORT: 3306
@@ -141,20 +166,32 @@ services:
 
   gateway:
     build: ./gateway
-    ports: ["4000:4000"]
+    container_name: gateway
+    ports:
+      - "4000:4000"
     environment:
-      AUTH_URL: http://auth-service:3001/graphql
+      AUTH_URL: http://auth_service:3001/graphql
       VEHICLE_URL: http://vehicle-service:3002/graphql
       TRAFFIC_URL: http://traffic-service:3003/graphql
       INCIDENT_URL: http://incident-service:3004/graphql
       NOTIFICATION_URL: http://notification-service:3005/graphql
       PORT: 4000
     depends_on:
-      - auth-service
+      - auth_service
       - vehicle-service
       - traffic-service
       - incident-service
       - notification-service
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    environment:
+      REACT_APP_API_URL: http://localhost:4000/graphql
 
 volumes:
   mysql_auth:

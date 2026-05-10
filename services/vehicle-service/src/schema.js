@@ -24,7 +24,7 @@ module.exports = gql`
     driverName: String
     positions: [GpsPosition]
     createdAt: String!
-    updatedAt: String!
+    # updatedAt supprimé car pas dans la base de données
   }
 
   type Query {
@@ -45,6 +45,7 @@ module.exports = gql`
 
     updateVehicle(
       id: ID!
+      licensePlate: String
       brand: String
       model: String
       type: VehicleType

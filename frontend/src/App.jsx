@@ -14,8 +14,10 @@ import TrafficZones from './pages/TrafficZones';
 import Incidents from './pages/Incidents';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
+// ✅ FIX: import des pages manquantes
+import Users from './pages/Users';
+import Settings from './pages/Settings';
 
-// Composant pour les routes
 const AppRoutes = () => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -29,11 +31,11 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
+      <Route
+        path="/login"
+        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />}
       />
-      
+
       <Route element={<PrivateRoute />}>
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -43,15 +45,17 @@ const AppRoutes = () => {
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />
+          {/* ✅ FIX: routes Utilisateurs et Paramètres ajoutées */}
+          <Route path="/users" element={<Users />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
-      
+
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
 };
 
-// Composant principal
 function App() {
   return (
     <ApolloProvider client={client}>

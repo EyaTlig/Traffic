@@ -22,6 +22,38 @@ function fmt(row) {
   };
 }
 
+// ── Envoyer une notification ──────────────────────────────────
+async function sendNotification({ title, message, type, recipientId, relatedEntityId, token }) {
+  try {
+    const res = await fetch('http://notification-service:3005/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token || '',
+      },
+      body: JSON.stringify({
+        query: `
+          mutation {
+            sendNotification(
+              title: ${JSON.stringify(title)}
+              message: ${JSON.stringify(message)}
+              type: ${type}
+              recipientId: ${JSON.stringify(recipientId)}
+              relatedEntityId: ${JSON.stringify(relatedEntityId || null)}
+            ) { id }
+          }
+        `,
+      }),
+    });
+    const data = await res.json();
+    if (data.errors) console.error('[Notification] errors:', data.errors);
+  } catch (err) {
+    console.error('[Notification] Failed:', err.message);
+  }
+}
+
+const DENSITY_LABELS = { LOW: 'Fluide 🟢', MEDIUM: 'Dense 🟡', HIGH: 'Congestionné 🔴' };
+
 module.exports = {
   Query: {
     trafficZones: async (_, __, { user }) => {
@@ -62,7 +94,7 @@ module.exports = {
       if (!user) throw new Error('Unauthorized');
       const pool = await getPool();
       const [rows] = await pool.execute(
-        "SELECT currentDensity, COUNT(*) as cnt FROM traffic_zones GROUP BY currentDensity"
+        'SELECT currentDensity, COUNT(*) as cnt FROM traffic_zones GROUP BY currentDensity'
       );
       const stats = { low: 0, medium: 0, high: 0 };
       rows.forEach(r => {
@@ -75,7 +107,8 @@ module.exports = {
   },
 
   Mutation: {
-    createTrafficZone: async (_, args, { user }) => {
+    // ── Créer une zone → notification ─────────────────────────
+    createTrafficZone: async (_, args, { user, token }) => {
       if (!user) throw new Error('Unauthorized');
       const pool = await getPool();
       const id = uuidv4();
@@ -84,10 +117,22 @@ module.exports = {
         [id, args.name, args.description || null, args.centerLatitude, args.centerLongitude, args.radiusMeters]
       );
       const [rows] = await pool.execute('SELECT * FROM traffic_zones WHERE id = ?', [id]);
-      return fmt(rows[0]);
+      const zone = fmt(rows[0]);
+
+      // 🔔 Notifier le créateur
+      await sendNotification({
+        title: `Zone créée : ${args.name}`,
+        message: `La zone de surveillance "${args.name}" a été créée avec un rayon de ${args.radiusMeters}m.`,
+        type: 'SYSTEM',
+        recipientId: user.sub,
+        relatedEntityId: id,
+        token,
+      });
+
+      return zone;
     },
 
-    updateTrafficZone: async (_, { id, ...fields }, { user }) => {
+    updateTrafficZone: async (_, { id, ...fields }, { user, token }) => {
       if (!user) throw new Error('Unauthorized');
       const pool = await getPool();
       const updates = Object.entries(fields).filter(([, v]) => v !== undefined);
@@ -100,11 +145,16 @@ module.exports = {
       return fmt(rows[0]);
     },
 
-    measureTraffic: async (_, args, { user }) => {
+    // ── Mesurer le trafic → notification si densité change ────
+    measureTraffic: async (_, args, { user, token }) => {
       if (!user) throw new Error('Unauthorized');
       const pool = await getPool();
-      const [zone] = await pool.execute('SELECT id FROM traffic_zones WHERE id = ?', [args.zoneId]);
-      if (!zone.length) throw new Error('Zone not found');
+
+      // Récupérer la zone et sa densité actuelle
+      const [zoneRows] = await pool.execute('SELECT * FROM traffic_zones WHERE id = ?', [args.zoneId]);
+      if (!zoneRows.length) throw new Error('Zone not found');
+      const zone = zoneRows[0];
+      const previousDensity = zone.currentDensity;
 
       const density = computeDensity(args.vehicleCount);
       const id = uuidv4();
@@ -114,6 +164,23 @@ module.exports = {
         [id, args.zoneId, args.vehicleCount, args.averageSpeed || null, density, args.notes || null]
       );
       await pool.execute('UPDATE traffic_zones SET currentDensity = ? WHERE id = ?', [density, args.zoneId]);
+
+      // 🔔 Notifier seulement si la densité a changé
+      if (density !== previousDensity) {
+        const isWorsen = (
+          (previousDensity === 'LOW' && density !== 'LOW') ||
+          (previousDensity === 'MEDIUM' && density === 'HIGH')
+        );
+
+        await sendNotification({
+          title: `Densité changée : ${zone.name}`,
+          message: `La zone "${zone.name}" est passée de ${DENSITY_LABELS[previousDensity]} à ${DENSITY_LABELS[density]}. Véhicules détectés : ${args.vehicleCount}.`,
+          type: density === 'HIGH' ? 'ALERT' : 'CONGESTION',
+          recipientId: user.sub,
+          relatedEntityId: args.zoneId,
+          token,
+        });
+      }
 
       const [rows] = await pool.execute('SELECT * FROM traffic_measurements WHERE id = ?', [id]);
       return fmt(rows[0]);

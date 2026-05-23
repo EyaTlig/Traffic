@@ -1,7 +1,12 @@
-const { gql } = require('apollo-server-express');
+const { gql } = require('graphql-tag');
 
 module.exports = gql`
-  enum NotificationType { INCIDENT CONGESTION SYSTEM ALERT }
+  enum NotificationType {
+    INCIDENT
+    CONGESTION
+    SYSTEM
+    ALERT
+  }
 
   type Notification {
     id: ID!
@@ -33,5 +38,19 @@ module.exports = gql`
     markNotificationRead(id: ID!): Notification!
     markAllNotificationsRead(recipientId: String!): Int!
     deleteNotification(id: ID!): Boolean!
+  }
+
+  type Subscription {
+    """
+    Pushed to a specific recipient in real-time when a new notification
+    is created for them via sendNotification.
+    """
+    notificationReceived(recipientId: String!): Notification!
+
+    """
+    Pushed whenever any notification for a recipient is marked as read
+    (individually or via markAllNotificationsRead).
+    """
+    notificationRead(recipientId: String!): Notification!
   }
 `;

@@ -16,8 +16,12 @@ function getUser(req) {
 async function start() {
   const app = express();
   const server = new ApolloServer({
-    typeDefs, resolvers,
-    context: ({ req }) => ({ user: getUser(req) }),
+    typeDefs,
+    resolvers,
+    context: ({ req }) => ({
+      user: getUser(req),
+      token: req.headers.authorization || '', // ← token brut pour appels inter-services
+    }),
     formatError: (err) => ({ message: err.message }),
   });
   await server.start();

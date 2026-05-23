@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, gql } from '@apollo/client';
 import { BellIcon } from '@heroicons/react/24/outline';
@@ -12,18 +12,18 @@ const UNREAD_COUNT_QUERY = gql`
 
 const NotificationBell = () => {
   const navigate = useNavigate();
+
+  // ✅ FIX: l'utilisateur est stocké sous 'user', pas 'userId'
+  const userId = JSON.parse(localStorage.getItem('user') || '{}')?.id;
+
   const { data, refetch } = useQuery(UNREAD_COUNT_QUERY, {
-    variables: { recipientId: localStorage.getItem('userId') || '' },
-    skip: !localStorage.getItem('userId'),
-    pollInterval: 30000,
+    variables: { recipientId: userId || '' },
+    skip: !userId,
+    pollInterval: 10000, // ✅ réduit à 10s pour voir les notifs plus vite
+    fetchPolicy: 'network-only',
   });
 
   const unreadCount = data?.unreadNotificationsCount || 0;
-
-  useEffect(() => {
-    const interval = setInterval(() => refetch(), 30000);
-    return () => clearInterval(interval);
-  }, [refetch]);
 
   return (
     <button

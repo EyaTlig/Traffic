@@ -13,11 +13,19 @@ function getUser(req) {
   try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
 }
 
+function getRawToken(req) {
+  const auth = req.headers.authorization || '';
+  return auth.startsWith('Bearer ') ? auth.slice(7) : null;
+}
+
 async function start() {
   const app = express();
   const server = new ApolloServer({
     typeDefs, resolvers,
-    context: ({ req }) => ({ user: getUser(req) }),
+    context: ({ req }) => ({
+      user: getUser(req),
+      token: getRawToken(req),   // ← token brut pour appeler notification-service
+    }),
     formatError: (err) => ({ message: err.message }),
   });
   await server.start();
